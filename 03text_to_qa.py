@@ -4,6 +4,44 @@
 根据文件大小决定生成问答对的数量。
 调用通义千问 API 生成问答对。
 将问答对转换为 Alpaca 格式并保存为 JSON 文件。
+政策问答提示词：
+        prompt = (
+        "您是中文污水处理政策/法规/标准问答生成助手。\n"
+        "任务：\n"
+        f"根据以下文本，生成至少 {qa_count} 个高质量问答对，确保问答内容严格基于文本。\n"
+        "内容范围：\n"
+        "- 适用范围/适用性\n"
+        "- 主要要求\n"
+        "- 指标限​​值/阈值（包括单位和条件）\n"
+        "- 职责/角色\n"
+        "- 实施程序/工作流程（包括报告/记录/验收，如有提及）\n"
+        "规则：\n\n"
+        "1) 请勿添加文本中未提及的信息。如果文本中没有某个细节，请勿推断。\n"
+        "2) 请用中文撰写。\n"
+        '3) 优先选择可检查合规性的问题（例如，"应当/不应当"、"必须/不得"、"限值/阈值"、"监测/采样频率"、"责任方/实体"、"程序步骤/工作流程"）。\n'
+        "4) 避免重复或近似重复；每个问答对应针对不同的条款/要点。\n"
+        "5) 答案务必简洁明了。请完全保留原文中的数字、单位和条件。\n"
+        "输出：\n"
+        "仅返回一个 JSON 数组，例如：\n"
+        "[\n"
+        '{"question":"...", "answer":"..."},\n'
+        "...\n"
+        "]\n"
+        "文本：\n"
+        f"{text}"
+    )
+
+    try:
+        response = dashscope.Generation.call(
+            model='qwen-turbo',
+            messages=[
+                {'role': 'system', 'content': '您是中文污水处理政策/法规/标准问答生成助手。'},#设定模型角色
+                {'role': 'user', 'content': prompt}#用户的内容就是上面构造的prompt
+            ],
+            result_format='message',#指定返回格式为“message”形式（SDK 自己的格式）
+            temperature=0.7,#默认值
+            max_tokens=2048  # 限制模型最大输出长度
+        )#调用通义千问生成接口
 """
 import os
 import json
@@ -53,21 +91,38 @@ qa_count：希望生成的问答对数量
 """
 def generate_qa_pairs(text, qa_count):
     prompt = (
-        f"请根据以下文本内容生成不少于{qa_count}个知识性问答对，内容应包括定义、原理、应用、优势、注意事项等，"
-        "并返回一个 JSON 数组，每个元素形如：{\"question\": \"...\", \"answer\": \"...\"}。\n\n"
-        f"{text}\n\n"
-        "请确保格式正确、内容准确，并仅返回 JSON 数组。"
-    )#构造要发给大模型的提示词，
-    #用中文说明任务：根据文本生成不少于 qa_count 个知识性问答对。
-    # 要求返回 JSON 数组，元素格式为 {"question": "...", "answer": "..."}。
-    #把原始文本 text 拼接到提示词后面。
-    #最后强调：只返回 JSON 数组。
+        "You are a question-answer pair generation assistant for Chinese wastewater-treatment operational knowledge.\n\n"
+        "Task:\n"
+        f"From the text below, generate at least {qa_count} informative, non-redundant question-answer pairs that are strictly grounded in the text.\n\n"
+        "Coverage:\n"
+        "- definitions / concepts\n"
+        "- principles / mechanisms\n"
+        "- process flows / steps\n"
+        "- benefits / applicability\n"
+        "- cautions / constraints / safety notes\n"
+        "- common problems / failure modes\n"
+        "- control strategies / troubleshooting actions\n"
+        "Rules:\n"
+        "1) Do not add any information not stated in the text. Do not infer missing details.\n"
+        "2) Write in Chinese.\n"
+        "3) Prefer questions that cover key principles and concepts, as well as highly practical and actionable questions (e.g., parameters, operating conditions, procedures/steps, anomalies, possible causes, corrective actions, and checks).\n"
+        "4) Avoid duplicates and near-duplicates; each question-answer pair should target a distinct point.\n"
+        "5) Keep answers concise and clear. Preserve numbers, units, and conditions exactly as in the text.\n"
+        "Output:\n"
+        "Return only a JSON array like:\n"
+        "[\n"
+        '{"question":"...", "answer":"..."},\n'
+        "...\n"
+        "]\n"
+        "Text:\n"
+        f"{text}"
+    )
 
     try:
         response = dashscope.Generation.call(
             model='qwen-turbo',
             messages=[
-                {'role': 'system', 'content': '你是一个问答生成助手。'},#设定模型角色
+                {'role': 'system', 'content': 'You are a question-answer pair generation assistant for Chinese wastewater-treatment operational knowledge.'},#设定模型角色
                 {'role': 'user', 'content': prompt}#用户的内容就是上面构造的prompt
             ],
             result_format='message',#指定返回格式为“message”形式（SDK 自己的格式）
@@ -144,5 +199,5 @@ def process_folder(input_folder):
 
 if __name__ == "__main__":
     #修改输入文件夹路径
-    input_dir = r"F:\PhD-item-experment\answer\knowledge\knowledgecode\Code\dataset_processing\wordtxt"  # ←←← 替换为你的输入路径
+    input_dir = r"F:\PhD-item-experment\answer\knowledge\knowledgecode\Code\dataset_processing1\wordtxt"  # ←←← 替换为你的输入路径
     process_folder(input_dir)
